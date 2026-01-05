@@ -1,2 +1,16 @@
-# Estudos_Pytest
-Repositório dedicado ao estudo e prática de testes automatizados com Pytest. Inclui exemplos de fixtures, parametrização, mocks e cobertura de código.
+# Estudos de Pytest 🧪
+
+Repositório criado para documentar meu aprendizado no framework **Pytest**.
+
+## 🎯 Objetivo
+Migrar meus conhecimentos de `unittest` para o `pytest`, focando em escrever testes mais limpos e eficientes.
+
+## 📝 Tópicos a estudar:
+- [x] Instalação e execução básica
+- [ ] Assertions padrão do Python
+- [ ] Fixtures e Escopos
+- [ ] Parametrização
+- [ ] Mocks com pytest-mock
+
+---
+*Estudos iniciados em: [05/01/2026]*
