@@ -7,9 +7,9 @@ Migrar meus conhecimentos de `unittest` para o `pytest`, focando em escrever tes
 
 ## 📝 Tópicos a estudar:
 - [x] Instalação e execução básica
-- [ ] Assertions padrão do Python
-- [ ] Fixtures e Escopos
-- [ ] Parametrização
+- [x] Assertions padrão do Python
+- [x] Fixtures e Escopos
+- [x] Parametrização
 - [ ] Mocks com pytest-mock
 
 ---
