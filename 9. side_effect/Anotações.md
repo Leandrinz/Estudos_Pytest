@@ -1,92 +1,123 @@
---- side_effect ---
+# 🧪 Pytest - Mock: side_effect
 
-1) O que é side_effect:
-    - side_effect permite que um mock:
+---
 
+## 1) O que é `side_effect`
 
-        . Lançe exceções
-        . Retorne valores diferentes
-        . Execute uma função
-        . Mude de comportamento a cada chamada
-        . É como dizer: "Quando essa função falsa for chamada, faça X".
+`side_effect` permite que um mock:
 
-    
-2) Por que é necessário:
-    - Sem o side_effect o mock:
-        . Apenas registra chamadas
-        . Sempre retorna None
-    
-    - Porém, na realidade:
-        . Serviços falham
-        . Exceções acontecem
-        . Retornos variam
-    . O side_effect deixa o teste realista
+- Lance exceções  
+- Retorne valores diferentes a cada chamada  
+- Execute uma função real ou fake  
+- Mude de comportamento a cada chamada  
 
+💡 É como dizer: `"Quando essa função falsa for chamada, faça X"`.
 
-3) Exemplo base com código real:
-    - "email_service.py":
-        def enviar_email(email):
-            print(f"Email enviado para {email}")
-    
-    - "usuario.py":
-        from email_service import enviar email
+---
 
-        def criar_usuario(nome, email):
-            enviar_email(email)
-            return {"nome": nome, "email": email}
+## 2) Por que é necessário
 
+Sem o `side_effect`, o mock:
 
-4) side_effect lançando exceção:
-    - Testando falha do serviço de email:
-        
-        from unittesst.mock import patch
-        import pytest
-        from usuario import criar_usuario
+- Apenas **registra chamadas**  
+- Sempre retorna `None`  
 
-        def test_erro_ao_enviar_email():
-            with patch("usuario.enviar_email") as mock_email:
-                mock_email.side_effect = RuntimeError("Falha no serviço")
+Na realidade, dependências externas podem falhar:
 
-                with pytest.raises(RuntimeError, match="Falha no serviço"):
-                    criar_usuario("Leandro", "leandro@email.com")
-    . O mock finge que o serviço quebrou.
+- Serviços falham  
+- Exceções acontecem  
+- Retornos variam  
 
+✅ `side_effect` deixa os testes mais realistas.
 
-5) side_effect com múltiplos retornos:
+---
 
-    def test_varios_comportamentos():
-        with patch("usuario.enviar_email") as mock_email:
-            mock_email.side_effect = [None, RuntimeError("Erro")]
+## 3) Exemplo base com código real
 
-            criar_usuario("Leandro", "a@email.com")
+**email_service.py**
+```python
+def enviar_email(email):
+    print(f"Email enviado para {email}")
+```
 
-            with pytest.raises(RuntimeError):
-                criar_usuario("Leandro", "b@email.com")
+**usuario.py**
+```python
+from email_service import enviar_email
 
-    . Cada chamada consome um item da lista
+def criar_usuario(nome, email):
+    enviar_email(email)
+    return {"nome": nome, "email": email}
+```
 
+---
 
-6) side_effect executando uma função:
-    
-    def fake_email(email):
-        if "@" not in email:
-            raise ValueError("Email inválido")
+## 4) `side_effect` lançando exceção
 
-    def test_validacao_email():
-        with patch("usuario.enviar_email") as mock_email:
-            mock_email.side_effect = fake_email
+Simulando falha no serviço de email:
 
-            with pytest.raises(ValueError):
-                criar_usuario("Leandro", "email_invalido")
+```python
+from unittest.mock import patch
+import pytest
+from usuario import criar_usuario
 
+def test_erro_ao_enviar_email():
+    with patch("usuario.enviar_email") as mock_email:
+        mock_email.side_effect = RuntimeError("Falha no serviço")
 
-7) Quando usaar side_effect:
-    - Usar quando:
-        . Quer simular erro
-        . Quer simular instabilidade
-        . Precisa de retorno variável
-        . Precisa testar fluxo de exceção
-    
-    - Não usar quando:
-        . Retorno simples basta
-        . Não há variação de comportamento
+        with pytest.raises(RuntimeError, match="Falha no serviço"):
+            criar_usuario("Leandro", "leandro@email.com")
+```
+
+💡 O mock **finge que o serviço quebrou**.
+
+---
+
+## 5) `side_effect` com múltiplos retornos
+
+Cada chamada consome um item da lista:
+
+```python
+def test_varios_comportamentos():
+    with patch("usuario.enviar_email") as mock_email:
+        mock_email.side_effect = [None, RuntimeError("Erro")]
+
+        # Primeira chamada funciona
+        criar_usuario("Leandro", "a@email.com")
+
+        # Segunda chamada dispara exceção
+        with pytest.raises(RuntimeError):
+            criar_usuario("Leandro", "b@email.com")
+```
+
+---
+
+## 6) `side_effect` executando uma função
+
+Podemos usar uma função fake para simular validação:
+
+```python
+def fake_email(email):
+    if "@" not in email:
+        raise ValueError("Email inválido")
+
+def test_validacao_email():
+    with patch("usuario.enviar_email") as mock_email:
+        mock_email.side_effect = fake_email
+
+        with pytest.raises(ValueError):
+            criar_usuario("Leandro", "email_invalido")
+```
+
+---
+
+## 7) Quando usar `side_effect`
+
+- **Use quando:**  
+  - Quer simular erro  
+  - Quer simular instabilidade  
+  - Precisa de retorno variável  
+  - Precisa testar fluxo de exceção  
+
+- **Não use quando:**  
+  - Retorno simples basta  
+  - Não há variação de comportamento

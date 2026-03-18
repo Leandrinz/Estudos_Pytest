@@ -1,88 +1,113 @@
---- Ordem de chamadas e spies ---
+# 🧪 Pytest / Mock - Ordem de Chamadas e Spies
 
-1) Regra:
-    . Só testamos a ordem quando a ordem é regra de negócio
+---
 
-    - Errado testar quando:
-        . É detalhe de implementação
-        . Pode mudar sem quebrar comportamento
-    
-    - Certo testar ordem quando:
-        . Uma coisa não pode acontecer antes da outra
-        . Existe risco real (ex: Cobrar antes de validar, salvar antes de cobrar)
+## 1️⃣ Regra de Ouro
 
+Só testamos a ordem quando **a ordem é regra de negócio**:
 
-2) Como verificar ordem de chamadas:
-    - Método -> mock_calls
+- ❌ Errado testar:
+  - Detalhes de implementação  
+  - Quando pode mudar sem quebrar comportamento  
 
-    - Exemplo simples:
+- ✅ Certo testar:
+  - Uma ação **não pode ocorrer antes da outra**  
+  - Há risco real de comportamento incorreto (ex: cobrar antes de validar, salvar antes de cobrar)
 
-        from unittest.mock import patch, call
-        from pedido import finalizar_pedido
+---
 
-        def test_ordem_das_chamadas():
-            with patch("pedido.cobrar_cartao") as mock_cobrar, \
-                patch("pedido.salvar_pedido") as mock_salvar, \
-                patch("pedido.enviar_notificacao") as mock_notificacao:
+## 2️⃣ Verificando ordem de chamadas em um único mock
 
-                finalizar_pedido(1234, 100, "email@email.com")
+- Cada mock tem seu próprio histórico (`mock_calls`):
 
-                assert mock_cobrar.mock_calls == [call(1234, 100)]
-    
-    . Porém isso não resolve tudo, por que cada mock tem seu próprio histórico
+```python
+from unittest.mock import patch, call
+from pedido import finalizar_pedido
 
+def test_ordem_das_chamadas():
+    with patch("pedido.cobrar_cartao") as mock_cobrar, \
+         patch("pedido.salvar_pedido") as mock_salvar, \
+         patch("pedido.enviar_notificacao") as mock_notificacao:
 
-3) Testando ordem ENTRE funções diferentes:
-    - mockar tudo no MESMO namespace:
+        finalizar_pedido(1234, 100, "email@email.com")
 
-        def test_ordem_completa_do_fluxo():
-            with patch("pedido.cobrar_cartao") as cobrar, \
-                patch("pedido.salvar_pedido") as salvar, \
-                patch("pedido.enviar_notificacao") as notificar:
+        # Apenas histórico do mock_cobrar
+        assert mock_cobrar.mock_calls == [call(1234, 100)]
+```
 
-                finalizar_pedido(1, 2, "a@a.com")
+> Atenção: isso **não resolve a ordem entre mocks diferentes**.
 
-                chamadas = (
-                    cobrar.mock_calls +
-                    salvar.mock_calls +
-                    notificar.mock_calls
-                )
+---
 
-                assert chamadas == [
-                    call(1, 2),
-                    call(1, 2),
-                    call("a@a.com", "Pedido confirmado")
-                ]
+## 3️⃣ Testando ordem entre funções diferentes
 
-    . Isso só deve ser usado quando a ordem importa de verdade
+- Combine os históricos no **mesmo namespace**:
 
+```python
+def test_ordem_completa_do_fluxo():
+    with patch("pedido.cobrar_cartao") as cobrar, \
+         patch("pedido.salvar_pedido") as salvar, \
+         patch("pedido.enviar_notificacao") as notificar:
 
-4) Alternativa mais elegante (spy):
-    - Em vez de mockar tudo, você pode observar chamadas reais:
+        finalizar_pedido(1, 2, "a@a.com")
 
-        with patch("pedido.cobrar_cartao", wraps=cobrar_cartao) as spy:
-            finalizar_pedido(1234, 100, "a@a.com")
-            spy.assert_called_once()
+        chamadas = cobrar.mock_calls + salvar.mock_calls + notificar.mock_calls
 
+        assert chamadas == [
+            call(1, 2),
+            call(1, 2),
+            call("a@a.com", "Pedido confirmado")
+        ]
+```
 
-5) Forma definitiva:
-    - attach_mock:
+> Use apenas quando a **ordem realmente importa**.
 
-        from unittest.mock import Mock, call, patch
-        from pedido import finalizar_pedido
+---
 
-        def test_cobrar_antes_de_salvar_pedido():
-            tracker = Mock()
+## 4️⃣ Usando Spy (observar chamadas reais)
 
-            with patch("pedido.cobrar_cartao") as mock_cobrar, \
-                patch("pedido.salvar_pedido") as mock_salvar:
+- Em vez de mockar tudo, você pode **envolver a função real**:
 
-                tracker.attach_mock(mock_cobrar, "cobrar")
-                tracker.attach_mock(mock_salvar, "salvar")
+```python
+from pedido import finalizar_pedido, cobrar_cartao
+from unittest.mock import patch
 
-                finalizar_pedido(2, 4, "leandrin@email.com")
+def test_spy_cobrar_cartao():
+    with patch("pedido.cobrar_cartao", wraps=cobrar_cartao) as spy:
+        finalizar_pedido(1234, 100, "a@a.com")
+        spy.assert_called_once()
+```
 
-                assert tracker.mock_calls == [
-                    call.cobrar(2, 4),
-                    call.salvar(2, 4)
-                ]
+> O `wraps` permite que a função real seja executada, mas ainda verificamos as chamadas.
+
+---
+
+## 5️⃣ Forma definitiva: attach_mock
+
+- Para **monitorar múltiplos mocks em um único tracker**:
+
+```python
+from unittest.mock import Mock, call, patch
+from pedido import finalizar_pedido
+
+def test_cobrar_antes_de_salvar_pedido():
+    tracker = Mock()
+
+    with patch("pedido.cobrar_cartao") as mock_cobrar, \
+         patch("pedido.salvar_pedido") as mock_salvar:
+
+        tracker.attach_mock(mock_cobrar, "cobrar")
+        tracker.attach_mock(mock_salvar, "salvar")
+
+        finalizar_pedido(2, 4, "leandrin@email.com")
+
+        assert tracker.mock_calls == [
+            call.cobrar(2, 4),
+            call.salvar(2, 4)
+        ]
+```
+
+✅ Vantagens:
+- Ordem exata das chamadas  
+- Visualização centralizada de múltiplos mocks  
+- Segurança de que a lógica crítica segue a sequência correta
